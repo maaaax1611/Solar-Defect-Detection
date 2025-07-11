@@ -62,7 +62,7 @@ def run_training(
     logger._log(f"Epoch: {epochs} | learning_rate: {lr} | batch_size: {bs} | weight_decay: {weight_decay} | early_stopping_patience: {early_stopping_patience} \n")
     logger._log("\n==============Logger metrics==============")
 
-    res = trainer.fit(logger=logger, epochs=epochs)
+    res = trainer.fit( epochs=epochs)
 
     # ====================== plot results =======================
     # training and validation loss

@@ -58,7 +58,7 @@ class ChallengeDataset(Dataset):
             img = gray2rgb(temp_img)
             # img = self.val_transform(img)
             labels = self.to_tensor(np.asarray(self.labels.iloc[index]).reshape(1,2))
-            #img = self.to_tensor(img)
+            img = self.to_tensor(img)
             return (img, labels)
         if self.mode == 'train':
             #self.count += 1
@@ -68,7 +68,7 @@ class ChallengeDataset(Dataset):
 
             # img = self.train_transform(img)
             labels = self.to_tensor(np.asarray(self.labels.iloc[index]).reshape(1, 2))
-            #img = self.to_tensor(img)
+            img = self.to_tensor(img)
             return (img, labels)
 
 
@@ -145,6 +145,7 @@ def create_dataset(
     class_combos = ["0_0", "0_1", "1_0", "1_1"]
 
     train_balanced = pd.DataFrame()
+    
 
     for class_combo in class_combos:
         train_class = train[train["class_combo"] == class_combo].copy()
@@ -164,6 +165,8 @@ def create_dataset(
 
     print(f"Train set saved to {output_train} ({len(train_balanced)} samples)")
     print(f"Val set saved to {output_val} ({len(val)} samples)")
+
+    train_balanced = train_balanced.drop("class_combo", axis=1)
 
     return train_balanced, val
 

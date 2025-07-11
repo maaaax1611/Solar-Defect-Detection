@@ -17,9 +17,9 @@ class Trainer:
                  optim=None,  # Optimizer
                  train_dl=None,  # Training data set
                  val_test_dl=None,  # Validation (or test) data set
-                 cuda=True,  # Whether to use the GPU
+                 cuda=False,  # Whether to use the GPU
                  early_stopping_patience=-1,
-                 path='./checkpoints'):  # The patience for early stopping
+                 save_dir='./checkpoints'):  # The patience for early stopping
         self._model = model
         self._crit = crit
         self._optim = optim
@@ -27,7 +27,7 @@ class Trainer:
         self._val_test_dl = val_test_dl
         self._cuda = cuda
         self._early_stopping_patience = early_stopping_patience
-        self.path = path
+        self.path = save_dir
         if os.path.isdir(self.path):
             shutil.rmtree(self.path)
             print("Existing Directory deleted")
