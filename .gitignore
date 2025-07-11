@@ -1,0 +1,43 @@
+# Bytecode-Dateien
+__pycache__/
+*.py[cod]
+
+# Jupyter Notebook Checkpoints
+.ipynb_checkpoints/
+
+# Virtuelle Umgebungen
+env/
+venv/
+.venv/
+
+# Temporäre Dateien / Logs
+*.log
+*.tmp
+*.swp
+*.bak
+.DS_Store
+
+# System- / IDE-spezifisch
+.vscode/
+.idea/
+
+# Output / Ergebnisdateien
+*.out
+*.pdf
+*.csv
+*.xlsx
+*.h5
+*.pth
+*.joblib
+*.npz
+*.zip
+*.npy
+*.json
+*.ckp
+*.png
+
+# Anaconda Umgebungsdateien (wenn auto-generiert)
+*.yaml
+
+# Persönliche Einstellungen
+*.env
