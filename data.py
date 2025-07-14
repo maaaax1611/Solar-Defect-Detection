@@ -57,7 +57,9 @@ class ChallengeDataset(Dataset):
             temp_img = imread(self.images.iloc[index])
             img = gray2rgb(temp_img)
             # img = self.val_transform(img)
-            labels = self.to_tensor(np.asarray(self.labels.iloc[index]).reshape(1,2))
+            # labels = self.to_tensor(np.asarray(self.labels.iloc[index]).reshape(1,2))
+            labels = torch.tensor(self.labels.iloc[index].values, dtype=torch.float32)
+
             img = self.to_tensor(img)
             return (img, labels)
         if self.mode == 'train':
@@ -67,7 +69,9 @@ class ChallengeDataset(Dataset):
             img = gray2rgb(temp_img)
 
             # img = self.train_transform(img)
-            labels = self.to_tensor(np.asarray(self.labels.iloc[index]).reshape(1, 2))
+            # labels = self.to_tensor(np.asarray(self.labels.iloc[index]).reshape(1, 2))
+            labels = torch.tensor(self.labels.iloc[index].values, dtype=torch.float32)
+
             img = self.to_tensor(img)
             return (img, labels)
 

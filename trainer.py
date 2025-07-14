@@ -1,9 +1,10 @@
 import torch as t
-from sklearn.metrics import f1_score, classification_report
+from sklearn.metrics import f1_score, classification_report, confusion_matrix, ConfusionMatrixDisplay
 import numpy as np
 # from tqdm.autonotebook import tqdm
 import warnings
 import os
+import matplotlib.pyplot as plt
 import shutil
 
 warnings.simplefilter("ignore")
@@ -114,55 +115,53 @@ class Trainer:
 
     def val_test(self):
         # set eval mode
-        self._model = self._model.eval()
-        # model.train(mode=False)
+        self._model.eval()
+        running_loss = 0
+        n_batches = 0
+
+        all_preds = []
+        all_labels = []
         # disable gradient computation
-        ''' "detach()" detaches the output from the computational graph. So no gradient will be backproped along this variable.
-        "torch.no_grad()" says that no operation should build the graph. The difference is that one refers to only a given variable 
-        on which it’s called. The other affects all operations taking place within the with statement.'''
-        tot_loss = 0
-        y_true = None
-        y_pred = None
-        with t.no_grad():
+        with t.no_grad(): 
             # iterate through the validation set
-            for i, (img, labels) in enumerate(self._val_test_dl):
+            for xb, yb in self._val_test_dl:
                 # transfer the batch to the gpu if given
                 if self._cuda:
-                    images = img.to('cuda')
-                    labels = labels.to('cuda')
-                else:
-                    images = img.to('cpu')
-                    labels = labels.to('cpu')
-                # perform a validation step
-                loss, prediction = self.val_test_step(images, labels)
-                tot_loss = tot_loss + loss
+                    xb, yb = xb.cuda(non_blocking=True), yb.cuda(non_blocking=True)
+                loss, preds = self.val_test_step(xb, yb)
+                running_loss += loss
+                n_batches += 1
+
+                # preds = t.sigmoid(probs)
+                # use cpu
+                preds = preds.cpu().numpy()
+                labels = yb.cpu().numpy().squeeze()
+
+
+                # binarize predictions
+                preds_bin = (preds > 0.5).astype(int)
+
                 # save the predictions and the labels for each batch
+                all_preds.append(preds_bin)
+                all_labels.append(labels)
 
-                # calculate the average loss and average metrics of your choice. You might want to calculate these metrics in designated functions
-                # because of labels and predictions => torch.squeeze
-                # make predictions in 1 or 0
-                if i == 0:
-                    y_true = labels
-                    y_pred = prediction
-                else:
-                    y_true = t.cat((y_true, labels), dim=0)
-                    y_pred = t.cat((y_pred, prediction), dim=0)
+        # calculate the average loss
+        val_loss = running_loss / max(1, n_batches)
 
-                '''https://towardsdatascience.com/pytorch-tabular-binary-classification-a0368da5bb89'''
-            squeeze_pred = t.squeeze(y_pred.cpu().round())
+        all_preds = np.concatenate(all_preds, axis=0)
+        all_labels = np.concatenate(all_labels, axis=0)
+        all_labels = all_labels.astype(int)
 
-            f1 = f1_score(t.squeeze(y_true.cpu()), squeeze_pred, average='weighted')  # 'macro')
-            # return the loss and print the calculated metrics
+        f1_per_class = f1_score(all_labels, all_preds, average=None, zero_division=0)
 
-            self.f1Score = f1
-            # self.f1Score = f1
-            '''divide f1 score by 2 ==> https://towardsdatascience.com/multi-class-metrics-made-simple-part-ii-the-f1-score-ebe8b2c2ca1'''
-            # self.f1Score = self.f1Score
-            if self.f1Score >= 0.70:
-                f = open(self.path + "/results.txt", "a+")
-                f.write(f'F1 score on valid_set at epoch{self.cnt_epoch} is {self.f1Score} and valid_loss ='
-                        f'{tot_loss / len(self._val_test_dl)}\n')
-            return tot_loss / len(self._val_test_dl)  # split = 1600/200batch and 400/200
+        y_true_comb = [f"{c}_{i}" for c, i in all_labels]
+        y_pred_comb = [f"{c}_{i}" for c, i in all_preds]
+        cm = confusion_matrix(y_true_comb, y_pred_comb, labels=["0_0", "1_0", "0_1", "1_1"])
+
+
+        # return the loss and print the calculated metrics
+        print(f"Validation Loss: {val_loss} | F1 Score - Crack: {f1_per_class[0]} | F1 Score - Inactive: {f1_per_class[1]}")
+        return val_loss, f1_per_class, cm
 
     def fit(self, epochs=-1):
         assert self._early_stopping_patience > 0 or epochs > 0
@@ -172,6 +171,7 @@ class Trainer:
         patience_count = 0
         self.cnt_epoch = 0
         f1_mean = []
+        best_val_loss = float("inf")
 
         while True:
             # stop by epoch number
@@ -183,7 +183,7 @@ class Trainer:
             avg_train_loss = self.train_epoch()
 
             # print(avg_train_loss)
-            avg_val_loss = self.val_test()
+            avg_val_loss, self.f1Score, confusion_matrix = self.val_test()
             # print(avg_train_loss, avg_val_loss)
             # print('***********', self.f1Score)
 
@@ -191,19 +191,32 @@ class Trainer:
 
             # mean_f1 = (self.f1Score[0]+self.f1Score[1])/2
             # print('mean f1 score :', mean_f1)
-            print('Epoch: {} F1_Score: {} Validation Loss: {}'.format(self.cnt_epoch, self.f1Score, avg_val_loss))
+            print('Epoch: {} mean F1_Score: {} Validation Loss: {}'.format(self.cnt_epoch, np.mean(self.f1Score), avg_val_loss))
 
             # append the losses to the respective lists
             train_loss.append(avg_train_loss)
-            val_loss.append((self.cnt_epoch, avg_val_loss, self.f1Score))
-            if avg_val_loss > 1.04 * val_loss[len(val_loss) - 2][1]:
+            val_loss.append(avg_val_loss)
+            if avg_val_loss < best_val_loss:
+                patience_count = 0
+                best_val_loss = avg_val_loss                
+            else:
                 patience_count += 1
 
-            if self.f1Score >= 0.70:
+            if np.mean(self.f1Score) >= 0.70:
                 self.save_checkpoint(self.cnt_epoch)
+
+                self.save_best_model(self._save_dir)
+                # logger._log(f"saved checkpoint model at epoch: {self.cnt_epoch}")
+
+                # save confusion matrix for best model
+                ConfusionMatrixDisplay(confusion_matrix, display_labels=["0_0", "1_0", "0_1", "1_1"]).plot(cmap="Blues", values_format="d")
+                plt.title("Confusion Matrix")
+                plt.savefig(self.path / 'confusion_matrix.png')
+                plt.close()                
                 # self.save_onnx(self.path+'/checkpoint_{:03d}.onnx'.format(self.cnt_epoch))
             # self.save_checkpoint(self.cnt_epoch)
 
             if patience_count >= self._early_stopping_patience or self.cnt_epoch >= epochs:
-                # print('Enough.. I have no Patience, I am STOPPING')
-                return train_loss, val_loss
+                print('Enough.. I have no Patience, I am STOPPING')
+                break
+        return train_loss, val_loss, f1_mean
