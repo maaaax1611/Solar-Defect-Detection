@@ -54,7 +54,8 @@ def run_training(
         train_dl = train_loader,
         val_test_dl = val_loader,
         early_stopping_patience = early_stopping_patience,
-        save_dir = run_dir
+        save_dir = run_dir,
+        cuda=False
     )
 
     logger = Logger(save_dir=run_dir)

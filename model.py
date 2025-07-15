@@ -42,9 +42,8 @@ class ResBlock(nn.Module):
         self.residual = input_tensor
         output_tensor = self.seq(input_tensor)
         if self.residual_conv:
-            #self.cnt +=1
             self.residual = self.conv1X1(self.residual)
-            #print(self.cnt)
+
         # Now normalize the residual
         self.residual = self.batch_norm3(self.residual)
         output_tensor += self.residual
@@ -53,7 +52,7 @@ class ResBlock(nn.Module):
 
 
 class ResNet(nn.Module):
-    def __init__(self):
+    def __init__(self, num_classes: int = 2):
         super(ResNet, self).__init__()
         self.seq1 = nn.Sequential(
             nn.Conv2d(in_channels=3, out_channels=64, kernel_size=7, stride=2, padding=3),
@@ -74,7 +73,7 @@ class ResNet(nn.Module):
             nn.AvgPool2d(kernel_size=10),
             Flatten(),
             nn.Dropout(p=0.5),
-            nn.Linear(in_features=512, out_features=2),
+            nn.Linear(in_features=512, out_features=num_classes),
             nn.Sigmoid()
         )
 
@@ -83,5 +82,3 @@ class ResNet(nn.Module):
         output_tensor = self.seq2(output_tensor)
         output_tensor = self.seq3(output_tensor)
         return output_tensor
-
-
