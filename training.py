@@ -55,7 +55,7 @@ def run_training(
         val_test_dl = val_loader,
         early_stopping_patience = early_stopping_patience,
         save_dir = run_dir,
-        cuda=False
+        cuda=True
     )
 
     logger = Logger(save_dir=run_dir)
@@ -63,7 +63,7 @@ def run_training(
     logger._log(f"Epoch: {epochs} | learning_rate: {lr} | batch_size: {bs} | weight_decay: {weight_decay} | early_stopping_patience: {early_stopping_patience} \n")
     logger._log("\n==============Logger metrics==============")
 
-    res = trainer.fit( epochs=epochs)
+    res = trainer.fit(logger=logger, epochs=epochs)
 
     # ====================== plot results =======================
     # training and validation loss
