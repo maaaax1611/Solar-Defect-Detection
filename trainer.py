@@ -167,7 +167,6 @@ class Trainer:
         train_losses, val_losses, f1_scores = [], [], []
 
         patience_count = 0
-        best_f1 = 0
         best_val = float("inf")
         epoch = 0
         
@@ -189,15 +188,6 @@ class Trainer:
             
             # early stopping
             checkpoint_needed = False
-
-            # f1 based early stopping
-            macro_f1 = np.mean(f1_per_class)
-            # if macro_f1 > best_f1:
-            #     best_f1 = macro_f1
-            #     patience_count = 0
-            #     checkpoint_needed = True
-            # else:
-            #     patience_count += 1
 
             # val_loss based early stopping
             if val_loss < best_val:

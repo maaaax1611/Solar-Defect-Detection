@@ -50,7 +50,8 @@ class ChallengeDataset(Dataset):
             # maybe add opening + closing and gaussian blurring here
             aug_tfms = [
                 T.RandomHorizontalFlip(),
-                T.RandomVerticalFlip()
+                T.RandomVerticalFlip(),
+                T.ColorJitter(brightness=0.2, contrast=0.1)
             ]
             self.transform = T.Compose(pil_tfm + aug_tfms + base_tfms)
         else:
@@ -85,5 +86,52 @@ class ChallengeDataset(Dataset):
         # Apply transformations to image
         img_tensor = self.transform(img)
 
-
         return img_tensor, label_tensor
+    
+
+import pandas as pd
+
+class DatasetUpsampler:
+    def __init__(self, df, class_columns, target_counts):
+        """
+        Initializes the upsampler.
+
+        Args:
+            df (pd.DataFrame): The input dataset (e.g., training set).
+            class_columns (list): List of column names that define the class combination (e.g., ['crack', 'inactive']).
+            target_counts (dict): A dictionary mapping class combinations (as strings, e.g., '0_1') to desired sample counts.
+        """
+        self.df = df.copy()
+        self.class_columns = class_columns
+        self.target_counts = target_counts
+
+        # Create a new column with combined class labels, e.g., "0_1"
+        self.df["class_combo"] = self.df[class_columns].astype(str).agg("_".join, axis=1)
+
+    def upsample(self):
+        """
+        Performs upsampling (or downsampling) based on the provided target_counts.
+
+        Returns:
+            pd.DataFrame: A new DataFrame containing the balanced dataset.
+        """
+        balanced_dfs = []
+
+        for combo, target_count in self.target_counts.items():
+            # Select all rows with the current class combination
+            df_subset = self.df[self.df["class_combo"] == combo]
+
+            if df_subset.empty:
+                print(f"⚠️ Class '{combo}' not found in dataset – skipping.")
+                continue
+
+            # Sample with or without replacement depending on availability
+            if len(df_subset) >= target_count:
+                sampled = df_subset.sample(n=target_count, replace=False, random_state=42)
+            else:
+                sampled = df_subset.sample(n=target_count, replace=True, random_state=42)
+
+            balanced_dfs.append(sampled)
+
+        # Combine all upsampled subsets into a single DataFrame
+        return pd.concat(balanced_dfs, ignore_index=True)
