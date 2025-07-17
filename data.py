@@ -13,6 +13,7 @@ from typing import Union
 from typing import Tuple
 from tqdm.autonotebook import tqdm
 from PIL import Image
+from torchvision.transforms import functional as F
 
 
 train_mean = [0.59685254, 0.59685254, 0.59685254]
@@ -36,11 +37,10 @@ class ChallengeDataset(Dataset):
             raise ValueError("mode must be 'train' or 'val'")
         self.data = data.reset_index(drop=True)
         self.mode = mode
+   
 
         # 1) Define image transformations
-        pil_tfm = [
-            T.ToPILImage()
-        ]
+
 
         base_tfms = [
             T.ToTensor(),
@@ -55,10 +55,10 @@ class ChallengeDataset(Dataset):
                 T.RandomVerticalFlip(),
                 T.ColorJitter(brightness=0.2, contrast=0.1)
             ]
-            self.transform = T.Compose(pil_tfm + aug_tfms + base_tfms)
+            self.transform = T.Compose([lambda img: self.crop_and_resize(img) , *aug_tfms , *base_tfms])
         else:
             # No augmentation in validation mode
-            self.transform = T.Compose(pil_tfm + base_tfms)
+            self.transform = T.Compose([lambda img: self.crop_and_resize(img) , *base_tfms])
 
     def __len__(self) -> int:
         # Return number of samples
@@ -85,10 +85,23 @@ class ChallengeDataset(Dataset):
         label_inactive: Union[int, list, np.ndarray] = record["inactive"]
         label_tensor = torch.as_tensor((label_crack, label_inactive), dtype=torch.long)
 
+
+
         # Apply transformations to image
         img_tensor = self.transform(img)
 
         return img_tensor, label_tensor
+    
+    def crop_and_resize(self, img):
+        img = F.to_pil_image(img)
+        cropped = F.crop(img, 20, 20, img.height - 40, img.width - 40)
+        resized = F.resize(cropped, size=(img.height, img.width), interpolation=Image.BILINEAR)
+        return resized
+    
+
+
+
+
     
 
 import pandas as pd
