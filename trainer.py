@@ -168,6 +168,7 @@ class Trainer:
 
         patience_count = 0
         best_val = float("inf")
+        best_f1 = 0
         epoch = 0
         
         while True:
@@ -188,12 +189,15 @@ class Trainer:
             
             # early stopping
             checkpoint_needed = False
+            f1_macro = np.mean(f1_per_class)
+            
+            if f1_macro > best_f1:
+                checkpoint_needed = True
 
             # val_loss based early stopping
             if val_loss < best_val:
                 best_val = val_loss
                 patience_count = 0
-                checkpoint_needed = True
             else:
                 patience_count += 1
 

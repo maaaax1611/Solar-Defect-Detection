@@ -12,17 +12,23 @@ if __name__ == "__main__":
         df=train,
         class_columns=["crack", "inactive"],
         target_counts={
-            "0_0": 400,
-            "0_1": 400,
+            "0_0": 600,
+            "0_1": 200,
             "1_0": 400,
-            "1_1": 400
+            "1_1": 300
         }
     )
 
     train_balanced = upsampler.upsample()
 
-    run_training(
-        train = train_balanced,
-        val = val,
-        epochs = 200
-    )
+    for lr in [1e-4, 3e-4, 6e-4]:
+        for bs in [64, 100]:
+            for es in [25, -1]:
+                run_training(
+                    lr = lr,
+                    bs = bs,
+                    early_stopping_patience=es,
+                    train = train_balanced,
+                    val = val,
+                    epochs = 200
+                )

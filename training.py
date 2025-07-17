@@ -71,6 +71,7 @@ def run_training(
     val_loss = res[1]
     f1_crack = np.array(res[2])[:,0]
     f1_inactive = np.array(res[2])[:,1]
+    f1_macro = np.mean([f1_crack, f1_inactive], axis=0)
 
     epochs_trained = np.arange(1, len(train_loss) + 1, 1)
 
@@ -81,6 +82,7 @@ def run_training(
     plt.subplot(1, 2, 1)
     plt.plot(epochs_trained, f1_crack, label="F1 Crack", color="blue")
     plt.plot(epochs_trained, f1_inactive, label="F1 Inactive", color="red")
+    plt.plot(epochs_trained, f1_macro, label="F1 macro", color="green")
     plt.xlabel("Epochs")
     plt.ylabel("F1 Score")
     plt.title("F1 Scores")
