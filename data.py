@@ -40,25 +40,34 @@ class ChallengeDataset(Dataset):
    
 
         # 1) Define image transformations
-
+        pil_tfm = [
+            T.ToPILImage()
+        ]
 
         base_tfms = [
             T.ToTensor(),
-            T.Normalize(mean=train_mean, std=train_std),
+            #T.Normalize(mean=train_mean, std=train_std),
         ]
 
         if mode == "train":
             # Apply data augmentation in training mode
             # maybe add opening + closing and gaussian blurring here
             aug_tfms = [
+                T.Lambda(lambda img: F.resized_crop(img, 
+                                                    top=20, 
+                                                    left=20, 
+                                                    height=img.height-40, 
+                                                    width=img.width-40, 
+                                                    size=(img.height, img.width), 
+                                                    interpolation=Image.BILINEAR)),
+                T.Lambda(lambda img: F.rotate(img, angle=90) if torch.rand(1) < 0.5 else img),
                 T.RandomHorizontalFlip(),
                 T.RandomVerticalFlip(),
-                T.ColorJitter(brightness=0.2, contrast=0.1)
             ]
-            self.transform = T.Compose([lambda img: self.crop_and_resize(img) , *aug_tfms , *base_tfms])
+            self.transform = T.Compose([*pil_tfm, *aug_tfms , *base_tfms])
         else:
             # No augmentation in validation mode
-            self.transform = T.Compose([lambda img: self.crop_and_resize(img) , *base_tfms])
+            self.transform = T.Compose([*pil_tfm , *base_tfms])
 
     def __len__(self) -> int:
         # Return number of samples
@@ -85,26 +94,16 @@ class ChallengeDataset(Dataset):
         label_inactive: Union[int, list, np.ndarray] = record["inactive"]
         label_tensor = torch.as_tensor((label_crack, label_inactive), dtype=torch.long)
 
-
-
         # Apply transformations to image
         img_tensor = self.transform(img)
 
         return img_tensor, label_tensor
     
     def crop_and_resize(self, img):
-        img = F.to_pil_image(img)
         cropped = F.crop(img, 20, 20, img.height - 40, img.width - 40)
         resized = F.resize(cropped, size=(img.height, img.width), interpolation=Image.BILINEAR)
         return resized
     
-
-
-
-
-    
-
-import pandas as pd
 
 class DatasetUpsampler:
     def __init__(self, df, class_columns, target_counts):
